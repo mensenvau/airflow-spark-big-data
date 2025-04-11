@@ -1,0 +1,87 @@
+services:
+  spark-master:
+    image: bitnami/spark:3.5.0
+    environment:
+      - SPARK_MODE=master
+      - SPARK_EXTRA_CLASSPATH=/opt/spark/jars/*
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    volumes:
+      - ./shared:/mnt/shared
+      - ./shared/jars:/opt/spark/jars
+
+  spark-worker:
+    image: bitnami/spark:3.5.0
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_EXTRA_CLASSPATH=/opt/spark/jars/*
+    depends_on:
+      - spark-master
+    volumes:
+      - ./shared:/mnt/shared
+      - ./shared/jars:/opt/spark/jars
+
+  airflow:
+    build: ./airflow
+    restart: always
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./shared:/mnt/shared
+    ports:
+      - "8081:8080"
+    command: >
+      bash -c "airflow db init &&
+               airflow users create --username admin --password admin --role Admin --email admin@example.com --firstname Admin --lastname User &&
+               airflow webserver & airflow scheduler"
+    depends_on:
+      - minio
+
+  jupyter:
+    image: jupyter/pyspark-notebook
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./shared:/mnt/shared
+      - ./shared/jars:/opt/spark/jars
+      - ./shared/notebooks:/home/jovyan/work
+      - ./shared/data:/home/jovyan/shared
+    environment:
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - S3_ENDPOINT=http://minio:9000
+      - SPARK_HOME=/usr/local/spark
+      - PYSPARK_PYTHON=python3
+      - SPARK_MASTER=spark://spark-master:7077
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    volumes:
+      - ./shared/minio:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+
+  createbucket:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+        sleep 5;
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+        mc mb -p local/${MINIO_BUCKET};
+        mc policy set public local/${MINIO_BUCKET};
+        exit 0;
+      "
