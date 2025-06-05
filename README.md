@@ -45,7 +45,7 @@ Then access:
 │   ├── data/             # Input/output data for Spark and Jupyter
 │   ├── minio/            # MinIO persistent volume
 │   └── notebooks/        # Jupyter notebooks (PySpark jobs)
-├── jars/                 # Extra Spark JARs (e.g., hadoop-aws, aws-sdk)
+├── shared/jars/          # Extra Spark JARs (e.g., hadoop-aws, aws-sdk)
 ├── dags/                 # Airflow DAGs
 ├── docker-compose.yml
 └── README.md
