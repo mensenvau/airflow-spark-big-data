@@ -1,0 +1,13 @@
+# Ignore MacOS metadata
+.DS_Store
+shared/.DS_Store
+
+# Python cache
+__pycache__/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# MinIO data
+shared/minio/
+

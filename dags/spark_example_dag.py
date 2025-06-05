@@ -1,10 +1,11 @@
 from datetime import datetime
 from airflow import DAG
 from airflow.operators.bash import BashOperator
+from airflow.utils.dates import days_ago
 
 default_args = {
-    'start_date': datetime(2025, 4, 10),
-    'catchup': False
+    'start_date': days_ago(1),
+    'catchup': False,
 }
 
 dag = DAG(
